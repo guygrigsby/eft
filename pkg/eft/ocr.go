@@ -507,6 +507,71 @@ func extractDigits(s string) string {
 	return b.String()
 }
 
+// RawDemographicFields holds raw OCR text for each demographic field.
+// Used by NormalizeRawDemographics to apply normalization outside of the
+// full ExtractDemographics pipeline (e.g., from browser-side OCR via WASM).
+type RawDemographicFields struct {
+	Name         string `json:"name"`
+	DOB          string `json:"dob"`
+	Sex          string `json:"sex"`
+	Race         string `json:"race"`
+	Height       string `json:"height"`
+	Weight       string `json:"weight"`
+	EyeColor     string `json:"eye_color"`
+	HairColor    string `json:"hair_color"`
+	PlaceOfBirth string `json:"place_of_birth"`
+	Citizenship  string `json:"citizenship"`
+	SSN          string `json:"ssn"`
+	Address      string `json:"address"`
+}
+
+// NormalizeRawDemographics applies the normalization pipeline to raw OCR
+// text for each field and returns a populated ATFPersonInfo. This is the
+// exported entry point for normalizing OCR results produced outside of Go
+// (e.g., tesseract.js in the browser).
+func NormalizeRawDemographics(raw RawDemographicFields) ATFPersonInfo {
+	var p ATFPersonInfo
+	if raw.Name != "" {
+		p.LastName, p.FirstName, p.MiddleName = parseName(raw.Name)
+	}
+	if raw.DOB != "" {
+		if dob, err := parseDOB(raw.DOB); err == nil {
+			p.DOB = dob
+		}
+	}
+	if raw.Sex != "" {
+		p.Sex = normalizeSex(raw.Sex)
+	}
+	if raw.Race != "" {
+		p.Race = normalizeRace(raw.Race)
+	}
+	if raw.Height != "" {
+		p.Height = normalizeHeight(raw.Height)
+	}
+	if raw.Weight != "" {
+		p.Weight = normalizeWeight(raw.Weight)
+	}
+	if raw.EyeColor != "" {
+		p.EyeColor = normalizeEyeColor(raw.EyeColor)
+	}
+	if raw.HairColor != "" {
+		p.HairColor = normalizeHairColor(raw.HairColor)
+	}
+	if raw.PlaceOfBirth != "" {
+		p.PlaceOfBirth = strings.ToUpper(strings.TrimSpace(raw.PlaceOfBirth))
+	}
+	if raw.Citizenship != "" {
+		p.Citizenship = normalizeCitizenship(raw.Citizenship)
+	}
+	if raw.SSN != "" {
+		p.SSN = normalizeSSN(raw.SSN)
+	}
+	if raw.Address != "" {
+		p.Address = strings.TrimSpace(raw.Address)
+	}
+	return p
+}
+
 // MergeDemographics copies non-empty fields from override into base.
 // This allows CLI flags to selectively override OCR results.
 func MergeDemographics(base, override ATFPersonInfo) ATFPersonInfo {

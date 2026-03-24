@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EFT Generator - ATF eForms Fingerprint File</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>EFT Generator</h1>
+  <p>Generate ATF eForms fingerprint files (.eft) from scanned FD-258 cards.</p>
+  <div class="privacy">All processing happens in your browser. No data is sent to any server.</div>
+</header>
+
+<!-- WASM loading state -->
+<div id="wasm-loading" class="loading">
+  <div class="spinner"></div>
+  <span>Loading EFT engine...</span>
+</div>
+
+<!-- Step 1: Upload -->
+<section id="step-upload" class="step disabled">
+  <h2><span class="step-number">1</span>Upload FD-258 Card</h2>
+  <div class="drop-zone" id="drop-zone">
+    <p>Drop your scanned FD-258 card here or click to browse</p>
+    <p style="margin-top:0.5rem; font-size:0.75rem;">PNG or JPEG, 500+ DPI recommended</p>
+    <input type="file" id="file-input" accept="image/png,image/jpeg">
+  </div>
+  <div id="upload-status"></div>
+</section>
+
+<!-- Step 2: Preview -->
+<section id="step-preview" class="step hidden">
+  <h2><span class="step-number">2</span>Fingerprint Preview</h2>
+  <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.75rem;">
+    Verify that the fingerprint crops look correct.
+  </p>
+  <div class="preview-grid">
+    <div class="preview-row" id="rolled-row-1"></div>
+    <div class="preview-row" id="rolled-row-2"></div>
+    <div class="preview-row" id="flat-row"></div>
+  </div>
+  <div style="margin-top:1rem;">
+    <button class="btn btn-secondary" id="btn-ocr" type="button">Try OCR</button>
+    <span style="font-size:0.75rem; color:var(--text-muted); margin-left:0.5rem;">
+      Auto-fill demographics from card header (loads ~2MB OCR engine)
+    </span>
+  </div>
+  <div id="ocr-status"></div>
+</section>
+
+<!-- Step 3: Demographics -->
+<section id="step-demographics" class="step hidden">
+  <h2><span class="step-number">3</span>Demographics</h2>
+  <form id="demo-form" class="form-grid">
+    <div>
+      <label for="lastName">Last Name <span class="req">*</span></label>
+      <input type="text" id="lastName" required>
+    </div>
+    <div>
+      <label for="firstName">First Name <span class="req">*</span></label>
+      <input type="text" id="firstName" required>
+    </div>
+    <div>
+      <label for="middleName">Middle Name</label>
+      <input type="text" id="middleName">
+    </div>
+    <div>
+      <label for="dob">Date of Birth <span class="req">*</span></label>
+      <input type="date" id="dob" required>
+    </div>
+    <div>
+      <label for="sex">Sex</label>
+      <select id="sex">
+        <option value="">--</option>
+        <option value="M">Male</option>
+        <option value="F">Female</option>
+        <option value="X">Non-binary</option>
+      </select>
+    </div>
+    <div>
+      <label for="race">Race</label>
+      <select id="race">
+        <option value="">--</option>
+        <option value="A">Asian</option>
+        <option value="B">Black</option>
+        <option value="I">American Indian</option>
+        <option value="W">White</option>
+        <option value="U">Unknown</option>
+      </select>
+    </div>
+    <div>
+      <label>Height</label>
+      <div class="height-group">
+        <div>
+          <input type="number" id="heightFt" min="3" max="7" placeholder="ft">
+        </div>
+        <span>'</span>
+        <div>
+          <input type="number" id="heightIn" min="0" max="11" placeholder="in">
+        </div>
+        <span>"</span>
+      </div>
+    </div>
+    <div>
+      <label for="weight">Weight (lbs)</label>
+      <input type="number" id="weight" min="1" max="999" placeholder="lbs">
+    </div>
+    <div>
+      <label for="eyeColor">Eye Color</label>
+      <select id="eyeColor">
+        <option value="">--</option>
+        <option value="BLK">Black</option>
+        <option value="BLU">Blue</option>
+        <option value="BRO">Brown</option>
+        <option value="GRN">Green</option>
+        <option value="GRY">Gray</option>
+        <option value="HAZ">Hazel</option>
+        <option value="MAR">Maroon</option>
+        <option value="MUL">Multicolor</option>
+        <option value="PNK">Pink</option>
+        <option value="XXX">Unknown</option>
+      </select>
+    </div>
+    <div>
+      <label for="hairColor">Hair Color</label>
+      <select id="hairColor">
+        <option value="">--</option>
+        <option value="BAL">Bald</option>
+        <option value="BLK">Black</option>
+        <option value="BLN">Blond</option>
+        <option value="BRO">Brown</option>
+        <option value="GRY">Gray</option>
+        <option value="RED">Red</option>
+        <option value="SDY">Sandy</option>
+        <option value="WHI">White</option>
+        <option value="XXX">Unknown</option>
+      </select>
+    </div>
+    <div>
+      <label for="pob">Place of Birth</label>
+      <input type="text" id="pob" placeholder="2-letter state/country code" maxlength="2"
+             style="text-transform:uppercase;">
+    </div>
+    <div>
+      <label for="citizenship">Citizenship</label>
+      <input type="text" id="citizenship" placeholder="e.g. US" maxlength="2" value="US"
+             style="text-transform:uppercase;">
+    </div>
+    <div>
+      <label for="ssn">SSN</label>
+      <input type="text" id="ssn" placeholder="9 digits, no dashes" maxlength="9"
+             pattern="\d{9}" autocomplete="off">
+    </div>
+    <div class="full">
+      <label for="address">Address</label>
+      <textarea id="address" rows="2"></textarea>
+    </div>
+  </form>
+</section>
+
+<!-- Step 4: Generate -->
+<section id="step-generate" class="step hidden">
+  <h2><span class="step-number">4</span>Generate EFT</h2>
+  <div style="display:flex; gap:1rem; align-items:center;">
+    <button class="btn btn-primary" id="btn-generate" type="button">Generate .eft File</button>
+    <div>
+      <label style="margin:0;">
+        <input type="checkbox" id="compression-toggle" checked>
+        WSQ compression (recommended)
+      </label>
+    </div>
+  </div>
+  <div id="generate-status"></div>
+  <div id="size-indicator" class="hidden">
+    <div class="size-bar"><div class="size-bar-fill" id="size-fill"></div></div>
+    <div class="size-text" id="size-text"></div>
+  </div>
+  <div id="download-area" class="hidden" style="margin-top:1rem;">
+    <a id="download-link" class="btn btn-primary" download="fingerprints.eft">Download fingerprints.eft</a>
+  </div>
+</section>
+
+<footer>
+  <p>
+    <a href="https://github.com/guygrigsby/eft">Source code</a> &middot;
+    Open source &middot;
+    No data collected
+  </p>
+</footer>
+
+<script src="wasm_exec.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

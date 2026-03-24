@@ -4,6 +4,17 @@ Go library and CLI for creating ANSI/NIST-ITL biometric transaction files (EFT).
 
 Built-in WSQ compression, FD-258 card cropping, OCR demographic extraction, and ATF-specific defaults.
 
+## Web App
+
+**No installation required.** Use the web app at [guygrigsby.github.io/eft](https://guygrigsby.github.io/eft) — everything runs in your browser via WebAssembly. No data is sent to any server.
+
+1. Upload your scanned FD-258 card (PNG or JPEG, 500+ DPI recommended)
+2. Verify the fingerprint crops look correct
+3. Fill in demographics manually or click "Try OCR" to auto-fill from the card header
+4. Click Generate to download your `.eft` file
+
+The WASM binary is ~4.5 MB (compressed ~2 MB on download). WSQ compression runs in-browser.
+
 ## Install
 
 **Library:**

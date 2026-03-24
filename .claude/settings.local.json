@@ -22,7 +22,12 @@
       "WebFetch(domain:slapeft.com)",
       "Bash(curl:*)",
       "Bash(go get:*)",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "Bash(done)",
+      "Bash(find /Users/guygrigsby/projects/guygrigsby/eft -name Makefile -o -name *.mk -o -name *.sh -o -name .github -type d)",
+      "Bash(grep:*)",
+      "Bash(find /Users/guygrigsby/projects/guygrigsby/eft -type d -not -path */.*)",
+      "Bash(grep -h \"^func.*\\(\" /Users/guygrigsby/projects/guygrigsby/eft/pkg/eft/*.go)"
     ]
   }
 }
