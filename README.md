@@ -6,11 +6,101 @@ Built-in WSQ compression, FD-258 card cropping, and ATF-specific defaults.
 
 ## Install
 
+**Library:**
 ```bash
-go get github.com/guygrigsby/eft
+go get github.com/guygrigsby/eft/pkg/eft
 ```
 
-## ATF eForms — Quick Start
+**CLI:**
+```bash
+go install github.com/guygrigsby/eft/cmd/eft@latest
+```
+
+## CLI
+
+The `eft` command-line tool exposes all library functionality.
+
+### ATF from card scan
+
+Create an ATF eForms EFT from a scanned FD-258 card. Automatically crops the card into individual prints and sets all ATF constants.
+
+```bash
+eft atf --last-name Doe --first-name John --dob 1990-01-01 \
+  --sex M --race W -o submission.eft card_scan.png
+```
+
+All demographic flags:
+```bash
+eft atf --last-name Smith --first-name Jane --middle-name Q \
+  --dob 1985-06-15 --sex F --race W --ssn 123456789 \
+  --pob VA --citizenship US --height 507 --weight 130 \
+  --eye-color BRO --hair-color BLK --compression none \
+  -o submission.eft fd258_scan.png
+```
+
+### ATF from pre-cropped images
+
+Create an ATF EFT from individual fingerprint images already extracted from the card.
+
+```bash
+eft atf-images --last-name Doe --first-name John --dob 1990-01-01 \
+  --sex M --race W \
+  --rolled-1 thumb_r.png --rolled-2 index_r.png \
+  --rolled-6 thumb_l.png --rolled-7 index_l.png \
+  --flat-right right4.png --flat-left left4.png \
+  --flat-thumbs thumbs.png -o submission.eft
+```
+
+### Generic transaction
+
+Create a generic ANSI/NIST-ITL transaction with full control over record types and fields.
+
+```bash
+eft create -t CAR --dai WVFBI0000 --ori WV1234567 --tcn TCN001 \
+  --finger 1:thumb.png --finger 2:index.png -o output.eft
+```
+
+With WSQ compression and custom options:
+```bash
+eft create -t FAUF --dai WVIAFIS0Z --ori WVATF0800 --tcn TCN002 \
+  --compression wsq --impression 3 --ppi 500 \
+  --domain NORAM --domain-version 11.1 \
+  --finger 1:thumb.png -o output.eft
+```
+
+The `--finger` flag format is `position:file` where position is the finger number (1-15). Use `--impression` to set the impression type (0=livescan plain, 1=livescan rolled, 2=nonlive plain, 3=nonlive rolled).
+
+### Crop FD-258 card
+
+Extract individual fingerprint images from a scanned card without building an EFT.
+
+```bash
+eft crop -o ./prints card_scan.png
+```
+
+Outputs 13 PNG files:
+```
+rolled_01_right_thumb.png  through  rolled_10_left_little.png
+flat_right_four.png
+flat_left_four.png
+flat_both_thumbs.png
+```
+
+### Common flags
+
+| Flag | Commands | Description |
+|------|----------|-------------|
+| `-o, --output` | create, atf, atf-images | Output EFT file path |
+| `-o, --output-dir` | crop | Output directory for cropped PNGs |
+| `-c, --compression` | create, atf, atf-images | `wsq` (default) or `none` |
+| `--date` | create, atf, atf-images | Transaction date `YYYY-MM-DD` (default today) |
+| `--tcn` | create, atf, atf-images | Transaction control number |
+
+## Library
+
+Import path: `github.com/guygrigsby/eft/pkg/eft`
+
+### ATF eForms — Quick Start
 
 Scan your entire FD-258 fingerprint card at 500+ DPI, save as PNG or JPEG, then:
 
@@ -22,7 +112,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/guygrigsby/eft"
+	"github.com/guygrigsby/eft/pkg/eft"
 )
 
 func main() {
