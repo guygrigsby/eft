@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
-	"image/color"
 	_ "image/jpeg"
 	"image/png"
 	_ "image/png"
@@ -24,9 +23,6 @@ import (
 func main() {
 	js.Global().Set("eftCropFD258", promiseFunc(cropFD258))
 	js.Global().Set("eftGenerateEFT", promiseFunc(generateEFT))
-	js.Global().Set("eftNormalizeDemographics", promiseFunc(normalizeDemographics))
-	js.Global().Set("eftCropHeader", promiseFunc(cropHeader))
-	js.Global().Set("eftCropHeaderFields", promiseFunc(cropHeaderFields))
 
 	// Signal that WASM is ready.
 	if cb := js.Global().Get("onEftReady"); !cb.IsUndefined() && !cb.IsNull() {
@@ -224,138 +220,3 @@ func generateEFT(args []js.Value) (interface{}, error) {
 	return jsData, nil
 }
 
-// normalizeDemographics takes raw OCR text for each field (JSON string)
-// and returns normalized demographics (JSON string).
-//
-// JS: eftNormalizeDemographics(rawJSON) → Promise<normalizedJSON>
-func normalizeDemographics(args []js.Value) (interface{}, error) {
-	if len(args) < 1 {
-		return nil, fmt.Errorf("normalizeDemographics: expected 1 argument (raw fields JSON)")
-	}
-
-	var raw eft.RawDemographicFields
-	if err := json.Unmarshal([]byte(args[0].String()), &raw); err != nil {
-		return nil, fmt.Errorf("parsing raw fields: %w", err)
-	}
-
-	person := eft.NormalizeRawDemographics(raw)
-
-	// Convert to output format.
-	out := demographicsInput{
-		LastName:     person.LastName,
-		FirstName:    person.FirstName,
-		MiddleName:   person.MiddleName,
-		Sex:          person.Sex,
-		Race:         person.Race,
-		PlaceOfBirth: person.PlaceOfBirth,
-		Citizenship:  person.Citizenship,
-		Height:       person.Height,
-		Weight:       person.Weight,
-		EyeColor:     person.EyeColor,
-		HairColor:    person.HairColor,
-		SSN:          person.SSN,
-		Address:      person.Address,
-	}
-	if !person.DOB.IsZero() {
-		out.DOB = person.DOB.Format("2006-01-02")
-	}
-
-	jsonBytes, err := json.Marshal(out)
-	if err != nil {
-		return nil, err
-	}
-	return string(jsonBytes), nil
-}
-
-// cropHeader takes a card image and returns the demographic header area
-// (top ~36%) as a single base64 PNG for full-page OCR.
-//
-// JS: eftCropHeader(imageBytes) → Promise<dataURI>
-func cropHeader(args []js.Value) (interface{}, error) {
-	if len(args) < 1 {
-		return nil, fmt.Errorf("cropHeader: expected 1 argument (image bytes)")
-	}
-
-	imgBytes := jsBytes(args[0])
-	img, _, err := image.Decode(bytes.NewReader(imgBytes))
-	if err != nil {
-		return nil, fmt.Errorf("decoding image: %w", err)
-	}
-
-	header := eft.CropHeader(img)
-
-	// Convert to Gray for PNG encoding.
-	var gray *image.Gray
-	if g, ok := header.(*image.Gray); ok {
-		gray = g
-	} else {
-		bounds := header.Bounds()
-		gray = image.NewGray(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
-		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-			for x := bounds.Min.X; x < bounds.Max.X; x++ {
-				gray.SetGray(x-bounds.Min.X, y-bounds.Min.Y,
-					color.GrayModel.Convert(header.At(x, y)).(color.Gray))
-			}
-		}
-	}
-
-	b64, err := grayToPNGBase64(gray)
-	if err != nil {
-		return nil, fmt.Errorf("encoding header: %w", err)
-	}
-	return b64, nil
-}
-
-// cropHeaderFields takes a card image and returns individual demographic
-// field crops as base64 PNGs. Each field is cropped using the same regions
-// as the CLI's per-field OCR approach.
-//
-// JS: eftCropHeaderFields(imageBytes) → Promise<JSON { name, address, dob, ... }>
-func cropHeaderFields(args []js.Value) (interface{}, error) {
-	if len(args) < 1 {
-		return nil, fmt.Errorf("cropHeaderFields: expected 1 argument (image bytes)")
-	}
-
-	imgBytes := jsBytes(args[0])
-	img, _, err := image.Decode(bytes.NewReader(imgBytes))
-	if err != nil {
-		return nil, fmt.Errorf("decoding image: %w", err)
-	}
-
-	fields := eft.DefaultFD258HeaderFields()
-	result := make(map[string]interface{})
-
-	type fieldEntry struct {
-		name string
-		rect eft.FractionalRect
-	}
-	entries := []fieldEntry{
-		{"name", fields.Name},
-		{"address", fields.Address},
-		{"dob", fields.DOB},
-		{"sex", fields.Sex},
-		{"race", fields.Race},
-		{"height", fields.Height},
-		{"weight", fields.Weight},
-		{"eye_color", fields.EyeColor},
-		{"hair_color", fields.HairColor},
-		{"place_of_birth", fields.PlaceOfBirth},
-		{"citizenship", fields.Citizenship},
-		{"ssn", fields.SSN},
-	}
-
-	for _, e := range entries {
-		crop := eft.CropHeaderField(img, e.rect)
-		b64, err := grayToPNGBase64(crop)
-		if err != nil {
-			return nil, fmt.Errorf("encoding %s: %w", e.name, err)
-		}
-		result[e.name] = b64
-	}
-
-	jsonBytes, err := json.Marshal(result)
-	if err != nil {
-		return nil, err
-	}
-	return string(jsonBytes), nil
-}

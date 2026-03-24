@@ -237,33 +237,6 @@ function updateSizeIndicator(size) {
   text.textContent = `${formatBytes(size)} / ${formatBytes(ATF_MAX_SIZE)} (${pct.toFixed(0)}%)`;
 }
 
-// --- OCR ---
-
-document.getElementById('btn-ocr').addEventListener('click', handleOCR);
-
-async function handleOCR() {
-  if (!cardImageBytes) return;
-
-  const btn = document.getElementById('btn-ocr');
-  btn.disabled = true;
-  showStatus('ocr-status', 'Loading OCR engine (~2 MB download)...', '');
-
-  try {
-    // Lazy-load ocr.js.
-    const { runOCR } = await import('./ocr.js');
-    showStatus('ocr-status', 'Reading card header...', '');
-
-    const normalized = await runOCR(cardImageBytes);
-    populateForm(normalized);
-
-    showStatus('ocr-status', 'Demographics extracted. Review and correct if needed.', 'success');
-  } catch (err) {
-    showStatus('ocr-status', `OCR failed: ${err.message}`, 'error');
-  } finally {
-    btn.disabled = false;
-  }
-}
-
 // --- Utilities ---
 
 function showStatus(elementId, message, type) {
