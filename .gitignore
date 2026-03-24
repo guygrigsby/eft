@@ -1,3 +1,7 @@
 # WASM build artifacts
 web/eft.wasm
 web/wasm_exec.js
+
+# Release build artifacts
+dist/
+eft

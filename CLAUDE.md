@@ -31,7 +31,7 @@ go test -run TestFoo  # Run a single test
 
 ### High-level APIs
 - `eft.go` — `CreateTransaction()`: generic API, decodes PNG/JPEG, builds Type-14 records.
-- `atf.go` — `CreateATFTransaction()`: ATF-specific, crops FD-258 card, builds Type-4 + Type-14 with hardcoded ATF values. → [docs/atf-eforms.md](docs/atf-eforms.md)
+- `atf.go` — `CreateATFTransaction()`: ATF-specific, crops FD-258 card, builds Type-4 rolled prints only (no Type-14) with hardcoded ATF values. → [docs/atf-eforms.md](docs/atf-eforms.md)
 - `fd258.go` — FD-258 card layout with fractional crop regions. `CropFD258()` extracts 13 prints. → [docs/fd258-layout.md](docs/fd258-layout.md)
 
 ### OCR / Demographic extraction
@@ -45,10 +45,13 @@ go test -run TestFoo  # Run a single test
 | TOT | `FAUF` | Federal Applicant User Fee |
 | DAI | `WVIAFIS0Z` | Destination agency |
 | ORI | `WVATF0800` | Originating agency |
-| VER | `0300` | ANSI/NIST-ITL 1-2007 (FBI EBTS 8.1) |
+| VER | `0200` | ANSI/NIST-ITL 1-2000 (FBI EFTS 7.1) |
 | RFP | `Firearms` | Reason fingerprinted |
 | Max size | 12 MB | ATF upload limit |
+| NSR/NTR | `19.69` | 500 ppi native scanning/transmitting resolution |
+| DOM | `NORAM` / `8.1` | Domain name / version |
 | WSQ | 0.75 bitrate | FBI standard for 500 ppi |
+| Records | Type-4 only | Rolled prints only; no Type-14 slaps (mutually exclusive) |
 | Name format | `Last,First Middle` | Type-2 field 2.018 |
 
 ## Dependencies
@@ -63,9 +66,10 @@ go test -run TestFoo  # Run a single test
 
 ## Key Specifications
 
-- EBTS v11.1 (in repo: `EBTS v11.1_Final_508.pdf`)
+- EBTS v11.3 (in repo: `docs/EBTS v11.3_Final_508.pdf`)
 - NIST SP 500-290 (ANSI/NIST-ITL 1-2011)
 - WSQ Specification v3.1
+- **New EBTS specs are published at https://fbibiospecs.fbi.gov/file-repository/ebts — check this site when building context for any spec version later than 11.3.**
 
 Full source list and design rationale: → [docs/sources.md](docs/sources.md)
 

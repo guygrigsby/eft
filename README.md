@@ -27,6 +27,9 @@ go get github.com/guygrigsby/eft/pkg/eft
 **CLI:**
 ```bash
 go install github.com/guygrigsby/eft/cmd/eft@latest
+
+# Or build locally:
+make build    # produces ./eft binary
 ```
 
 **OCR support** (optional — needed for `--ocr` flag):
@@ -160,11 +163,13 @@ os.WriteFile("fingerprints.eft", data, 0644)
 ```
 
 The library automatically:
-- Crops the FD-258 card into 10 rolled prints + 3 flat/slap impressions
+- Crops the FD-258 card into 10 rolled prints
 - Compresses all images with WSQ at 0.75 bitrate (FBI standard)
-- Builds Type-1 (header), Type-2 (demographic), Type-4 (rolled), and Type-14 (slaps) records
-- Sets ATF-specific values (TOT=FAUF, DAI=WVIAFIS0Z, ORI=WVATF0800, RFP=Firearms)
+- Builds Type-1 (header), Type-2 (demographic), and Type-4 (rolled) records
+- Sets ATF-specific values (TOT=FAUF, DAI=WVIAFIS0Z, ORI=WVATF0800, VER=0200, RFP=Firearms)
 - Validates the output is under ATF's 12 MB limit
+
+> **Note:** ATF eForms FAUF transactions accept only Type-4 rolled prints. Slap/flat prints (Type-14) are not included — mixing Type-4 and Type-14 causes "mutually exclusive records" validation errors.
 
 ### OCR Demographic Extraction
 
@@ -349,13 +354,16 @@ These are hardcoded in `CreateATFTransaction`:
 
 | Field | Value |
 |---|---|
-| 1.002 VER | `0200` |
+| 1.002 VER | `0200` (ANSI/NIST-ITL 1-2000 / EFTS 7.1) |
 | 1.004 TOT | `FAUF` (Federal Applicant User Fee) |
 | 1.007 DAI | `WVIAFIS0Z` |
 | 1.008 ORI | `WVATF0800` |
 | 1.011 NSR | `19.69` (500 ppi) |
+| 1.012 NTR | `19.69` (500 ppi) |
+| 1.013 DOM | `NORAM` / `8.1` |
 | 2.037 RFP | `Firearms` |
 | 2.073 CRI | `WVATF0800` |
+| Records | Type-4 only (10 rolled prints, no Type-14 slaps) |
 | Compression | WSQ at 0.75 bitrate |
 | Max file size | 12 MB |
 
@@ -369,7 +377,7 @@ Public-domain ANSI/NIST-ITL sample files for testing:
 
 ## Specification References
 
-- [EBTS v11.1](https://www.fbibiospecs.cjis.gov/EBTS/Approved) — FBI Electronic Biometric Transmission Specification (included in this repo as PDF)
+- [EBTS v11.3](https://fbibiospecs.fbi.gov/file-repository/ebts) — FBI Electronic Biometric Transmission Specification (included in this repo as PDF). New versions are published at this URL.
 - [NIST SP 500-290](https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.500-290e3.pdf) — ANSI/NIST-ITL 1-2011 Update 2015
 - [WSQ Specification v3.1](http://www.fbibiospecs.cjis.gov/Document/Get?fileName=WSQ_Gray-scale_Specification_Version_3_1_Final.pdf) — Wavelet Scalar Quantization compression
 - [NIST NBIS Software](https://www.nist.gov/services-resources/software/nist-biometric-image-software-nbis) — Reference C implementation
