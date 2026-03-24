@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.nist.gov)",
+      "WebFetch(domain:github.com)",
+      "Bash(brew list:*)",
+      "Bash(pdftotext \"/Users/guygrigsby/projects/guygrigsby/eft/EBTS v11.1_Final_508.pdf\" -)",
+      "Bash(pdftotext '/Users/guygrigsby/projects/guygrigsby/eft/EBTS v11.1_Final_508.pdf' -)",
+      "Bash(go version:*)",
+      "Bash(go mod:*)",
+      "Bash(go test:*)",
+      "WebFetch(domain:www.bayometric.com)",
+      "WebFetch(domain:lakotasoftware.com)",
+      "Bash(gh search:*)",
+      "WebFetch(domain:www.nationalguntrusts.com)",
+      "Bash(gh repo:*)",
+      "Read(//private/tmp/**)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:credenceid.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:slapeft.com)",
+      "Bash(curl:*)",
+      "Bash(go get:*)",
+      "Bash(go build:*)"
+    ]
+  }
+}

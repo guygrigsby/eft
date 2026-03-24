@@ -1,0 +1,75 @@
+# FD-258 Card Layout and Crop Regions
+
+## Card Overview
+
+The FBI FD-258 is a standard 8"×8" fingerprint card. The upper portion contains demographic fields; the lower portion has labeled boxes for fingerprint impressions.
+
+This library accepts a scan of the **entire card** including the demographic header. The crop coordinates account for the full card layout — the header area (~28% of the card height) is simply ignored during cropping.
+
+## Physical Layout
+
+```
+┌──────────────────────────────────────────────────┐
+│  Row 1: Rolled prints (right hand)               │
+│  [R.Thumb] [R.Index] [R.Middle] [R.Ring] [R.Little] │
+│                                                   │
+│  Row 2: Rolled prints (left hand)                │
+│  [L.Thumb] [L.Index] [L.Middle] [L.Ring] [L.Little] │
+│                                                   │
+│  Row 3: Flat/slap prints                         │
+│  [Left 4 Fingers] [L.Thumb] [R.Thumb] [Right 4 Fingers] │
+└──────────────────────────────────────────────────┘
+```
+
+## Fractional Crop Regions
+
+All coordinates use `FractionalRect` — values from 0.0 to 1.0 relative to the **full card** dimensions (including header). This makes the layout resolution-independent.
+
+```go
+type FractionalRect struct {
+    X1, Y1, X2, Y2 float64  // all in range [0.0, 1.0]
+}
+```
+
+### Header area (Y: 0.00–0.28)
+
+The demographic header occupies the top ~28% of the card (~2.25" of 8"). This area is not cropped — it is simply skipped by the fingerprint crop regions.
+
+### Row 1: Right hand rolled (Y: 0.30–0.53)
+
+| Finger | Position | X1   | Y1   | X2   | Y2   |
+|--------|----------|------|------|------|------|
+| R.Thumb  | 1 | 0.02 | 0.30 | 0.20 | 0.53 |
+| R.Index  | 2 | 0.20 | 0.30 | 0.40 | 0.53 |
+| R.Middle | 3 | 0.40 | 0.30 | 0.60 | 0.53 |
+| R.Ring   | 4 | 0.60 | 0.30 | 0.80 | 0.53 |
+| R.Little | 5 | 0.80 | 0.30 | 0.98 | 0.53 |
+
+### Row 2: Left hand rolled (Y: 0.55–0.76)
+
+| Finger | Position | X1   | Y1   | X2   | Y2   |
+|--------|----------|------|------|------|------|
+| L.Thumb  | 6 | 0.02 | 0.55 | 0.20 | 0.76 |
+| L.Index  | 7 | 0.20 | 0.55 | 0.40 | 0.76 |
+| L.Middle | 8 | 0.40 | 0.55 | 0.60 | 0.76 |
+| L.Ring   | 9 | 0.60 | 0.55 | 0.80 | 0.76 |
+| L.Little | 10 | 0.80 | 0.55 | 0.98 | 0.76 |
+
+### Row 3: Flat/slap prints (Y: 0.78–0.98)
+
+| Print | Position | X1   | Y1   | X2   | Y2   |
+|-------|----------|------|------|------|------|
+| Left 4 fingers  | 14 | 0.02 | 0.78 | 0.37 | 0.98 |
+| Left thumb       | 15 (part) | 0.37 | 0.78 | 0.50 | 0.98 |
+| Right thumb      | 15 (part) | 0.50 | 0.78 | 0.63 | 0.98 |
+| Right 4 fingers | 13 | 0.63 | 0.78 | 0.98 | 0.98 |
+
+Note: Both thumbs are combined into position 15 (`FingerBothThumbs`) for the Type-14 slap record.
+
+## Minimum Image Size
+
+`CropFD258()` requires at least 100×100 pixels. Images smaller than this are rejected. For good print quality, scan at 500 DPI (yielding ~4000×4000 pixels for the card).
+
+## Custom Layouts
+
+Override `DefaultFD258Layout()` by constructing your own `FD258Layout` with adjusted `FractionalRect` values for non-standard cards or cards with alignment issues.
