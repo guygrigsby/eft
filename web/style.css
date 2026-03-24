@@ -283,6 +283,8 @@ footer {
   font-size: 0.8rem;
   color: var(--text-muted);
 }
+footer .support { margin-top: 0.5rem; }
+footer .support a { color: var(--accent); }
 
 @media (max-width: 600px) {
   body { padding: 1rem; }
