@@ -34,6 +34,10 @@ go test -run TestFoo  # Run a single test
 - `atf.go` — `CreateATFTransaction()`: ATF-specific, crops FD-258 card, builds Type-4 + Type-14 with hardcoded ATF values. → [docs/atf-eforms.md](docs/atf-eforms.md)
 - `fd258.go` — FD-258 card layout with fractional crop regions. `CropFD258()` extracts 13 prints. → [docs/fd258-layout.md](docs/fd258-layout.md)
 
+### OCR / Demographic extraction
+- `ocr.go` — `OCRProvider` interface, `ExtractDemographics()` pipeline, `FD258HeaderFields` crop regions for header fields, normalization functions (name, DOB, sex, race, height, weight, eye/hair color, SSN, citizenship), `MergeDemographics()` for overlaying CLI overrides on OCR results, `CropHeader()` / `CropHeaderField()` utilities.
+- CLI: `cmd/eft/tesseract.go` — `TesseractOCR` provider shelling out to `tesseract --psm 7`. `cmd/eft/atf.go` — `--ocr` flag wires OCR into the ATF command with flag-based override support.
+
 ## ATF Constants
 
 | Field | Value | Note |
@@ -55,6 +59,7 @@ go test -run TestFoo  # Run a single test
 
 - Test images use random noise (`rand.NewSource(42)`) because WSQ fails on smooth/uniform content.
 - ATF integration test uses `NoneCompressor` to avoid WSQ overhead; card size kept ≤1000×1000 to stay under 12MB.
+- OCR tests use `sequentialOCR` and `fixedOCR` mocks — no tesseract required. Normalization functions are tested independently with table-driven tests.
 
 ## Key Specifications
 
@@ -74,3 +79,4 @@ Full source list and design rationale: → [docs/sources.md](docs/sources.md)
 | WSQ compression (go-wsq, Compressor interface, limitations) | [docs/wsq-compression.md](docs/wsq-compression.md) |
 | Type-4 binary format (18-byte header, when to use vs Type-14) | [docs/type4-binary-format.md](docs/type4-binary-format.md) |
 | Sources and references (specs, software, ATF research, test data) | [docs/sources.md](docs/sources.md) |
+| OCR demographic extraction (interface, header fields, normalization) | `pkg/eft/ocr.go` |
