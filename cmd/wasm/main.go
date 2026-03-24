@@ -26,6 +26,7 @@ func main() {
 	js.Global().Set("eftGenerateEFT", promiseFunc(generateEFT))
 	js.Global().Set("eftNormalizeDemographics", promiseFunc(normalizeDemographics))
 	js.Global().Set("eftCropHeader", promiseFunc(cropHeader))
+	js.Global().Set("eftCropHeaderFields", promiseFunc(cropHeaderFields))
 
 	// Signal that WASM is ready.
 	if cb := js.Global().Get("onEftReady"); !cb.IsUndefined() && !cb.IsNull() {
@@ -303,4 +304,58 @@ func cropHeader(args []js.Value) (interface{}, error) {
 		return nil, fmt.Errorf("encoding header: %w", err)
 	}
 	return b64, nil
+}
+
+// cropHeaderFields takes a card image and returns individual demographic
+// field crops as base64 PNGs. Each field is cropped using the same regions
+// as the CLI's per-field OCR approach.
+//
+// JS: eftCropHeaderFields(imageBytes) → Promise<JSON { name, address, dob, ... }>
+func cropHeaderFields(args []js.Value) (interface{}, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("cropHeaderFields: expected 1 argument (image bytes)")
+	}
+
+	imgBytes := jsBytes(args[0])
+	img, _, err := image.Decode(bytes.NewReader(imgBytes))
+	if err != nil {
+		return nil, fmt.Errorf("decoding image: %w", err)
+	}
+
+	fields := eft.DefaultFD258HeaderFields()
+	result := make(map[string]interface{})
+
+	type fieldEntry struct {
+		name string
+		rect eft.FractionalRect
+	}
+	entries := []fieldEntry{
+		{"name", fields.Name},
+		{"address", fields.Address},
+		{"dob", fields.DOB},
+		{"sex", fields.Sex},
+		{"race", fields.Race},
+		{"height", fields.Height},
+		{"weight", fields.Weight},
+		{"eye_color", fields.EyeColor},
+		{"hair_color", fields.HairColor},
+		{"place_of_birth", fields.PlaceOfBirth},
+		{"citizenship", fields.Citizenship},
+		{"ssn", fields.SSN},
+	}
+
+	for _, e := range entries {
+		crop := eft.CropHeaderField(img, e.rect)
+		b64, err := grayToPNGBase64(crop)
+		if err != nil {
+			return nil, fmt.Errorf("encoding %s: %w", e.name, err)
+		}
+		result[e.name] = b64
+	}
+
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		return nil, err
+	}
+	return string(jsonBytes), nil
 }
