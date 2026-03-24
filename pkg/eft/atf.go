@@ -15,7 +15,8 @@ const (
 	ATFDestinationAgency = "WVIAFIS0Z"
 	ATFOriginatingAgency = "WVATF0800"
 	ATFReasonPrinted     = "Firearms"
-	ATFVersion           = "0200" // ANSI/NIST-ITL 1-2000
+	ATFVersion       = "0200" // ANSI/NIST-ITL 1-2000 (FBI EFTS 7.1)
+	ATFDomainVersion = "8.1"
 
 	// ATFMaxFileSize is the maximum EFT file size accepted by ATF eForms.
 	ATFMaxFileSize = 12 * 1024 * 1024 // 12 MB
@@ -51,7 +52,8 @@ type ATFPersonInfo struct {
 	HairColor string
 	// SSN is social security number (9 digits, no dashes). Optional.
 	SSN string
-	// Address is optional.
+	// Address is optional. Note: ATF validator rejects spaces in field 2.041,
+	// so this field is not included in the EFT output.
 	Address string
 }
 
@@ -131,21 +133,22 @@ func createATFFromImages(images *FD258Images, opts ATFSubmissionOptions) ([]byte
 	dateStr := date.Format("20060102")
 
 	// Build Type-1 header.
+	// NSR/NTR = "19.69" (500 ppi) since we have Type-4 binary records.
 	type1, err := NewType1Record(Type1Options{
-		TransactionType:   ATFTransactionType,
-		DestinationAgency: ATFDestinationAgency,
-		OriginatingAgency: ATFOriginatingAgency,
-		ControlNumber:     tcn,
-		Date:              date,
+		TransactionType:               ATFTransactionType,
+		DestinationAgency:             ATFDestinationAgency,
+		OriginatingAgency:             ATFOriginatingAgency,
+		ControlNumber:                 tcn,
+		Version:                       ATFVersion,
+		NativeScanningResolution:      "19.69",
+		NominalTransmittingResolution: "19.69",
+		Date:                          date,
+		DomainName:                    "NORAM",
+		DomainVersion:                 ATFDomainVersion,
 	})
 	if err != nil {
 		return nil, err
 	}
-	// Override version for ATF compatibility.
-	type1.SetField(2, []byte(ATFVersion))
-	// NSR/NTR for 500 ppi: 19.69 pixels/mm
-	type1.SetField(11, []byte("19.69"))
-	type1.SetField(12, []byte("19.69"))
 
 	// Build Type-2 demographic record.
 	type2Fields := buildATFType2Fields(opts.Person, dateStr)
@@ -159,65 +162,30 @@ func createATFFromImages(images *FD258Images, opts ATFSubmissionOptions) ([]byte
 	txn.AddRecord(type2)
 
 	// Add Type-4 records for 10 rolled prints.
+	// ATF eForms expects rolled prints as Type-4 binary records (max 3 Type-14 allowed).
 	for i := 0; i < 10; i++ {
 		if images.Rolled[i] == nil {
 			continue
 		}
+
+		fp := FingerPosition(i + 1)
 		rec, _, err := NewType4Record(Type4Options{
 			IDC:            i + 1,
 			ImpressionType: ImpressionNonLiveRolled,
-			FingerPosition: FingerPosition(i + 1),
+			FingerPosition: fp,
 			Image:          images.Rolled[i],
 			Compressor:     comp,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("eft: rolled finger %d: %w", i+1, err)
 		}
+
 		txn.AddRecord(rec)
 	}
 
-	// Add Type-14 records for flat/slap prints.
-	slapImages := []struct {
-		img      *image.Gray
-		position FingerPosition
-		idc      int
-	}{
-		{images.FlatRight, FingerRightFourFingers, 11},
-		{images.FlatLeft, FingerLeftFourFingers, 12},
-		{images.FlatThumbs, FingerBothThumbs, 13},
-	}
-
-	for _, slap := range slapImages {
-		if slap.img == nil {
-			continue
-		}
-
-		imgData, err := comp.Compress(slap.img)
-		if err != nil {
-			return nil, fmt.Errorf("eft: flat print %d: %w", slap.position, err)
-		}
-
-		bounds := slap.img.Bounds()
-		rec, err := NewType14Record(Type14Options{
-			IDC:                  slap.idc,
-			ImpressionType:       ImpressionNonLivePlain,
-			SourceAgency:         ATFOriginatingAgency,
-			CaptureDate:          dateStr,
-			HorizontalLineLength: bounds.Dx(),
-			VerticalLineLength:   bounds.Dy(),
-			ScaleUnits:           ScaleUnitsPPI,
-			HorizontalPixelScale: 500,
-			VerticalPixelScale:   500,
-			Compression:          comp.Algorithm(),
-			BitsPerPixel:         8,
-			FingerPosition:       slap.position,
-			ImageData:            imgData,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("eft: flat print %d: %w", slap.position, err)
-		}
-		txn.AddRecord(rec)
-	}
+	// Note: ATF eForms FAUF transactions accept only Type-4 rolled prints.
+	// Slap/flat prints (Type-14) are not included — mixing Type-4 and Type-14
+	// causes "mutually exclusive records" validation errors.
 
 	data, err := txn.Encode()
 	if err != nil {
@@ -249,10 +217,12 @@ func buildATFType2Fields(p ATFPersonInfo, dateStr string) map[int][]byte {
 	}
 	fields[18] = []byte(name)
 
-	// 2.020 POB — place of birth
-	if p.PlaceOfBirth != "" {
-		fields[20] = []byte(p.PlaceOfBirth)
+	// 2.020 POB — place of birth (mandatory for FAUF; "XX" = unknown)
+	pob := p.PlaceOfBirth
+	if pob == "" {
+		pob = "XX"
 	}
+	fields[20] = []byte(pob)
 
 	// 2.021 CTZ — citizenship
 	if p.Citizenship != "" {
@@ -262,35 +232,47 @@ func buildATFType2Fields(p ATFPersonInfo, dateStr string) map[int][]byte {
 	// 2.022 DOB
 	fields[22] = []byte(p.DOB.Format("20060102"))
 
-	// 2.024 SEX
-	if p.Sex != "" {
-		fields[24] = []byte(p.Sex)
+	// 2.024 SEX (mandatory for FAUF; "U" = unknown)
+	sex := p.Sex
+	if sex == "" {
+		sex = "U"
 	}
+	fields[24] = []byte(sex)
 
-	// 2.025 RAC — race
-	if p.Race != "" {
-		fields[25] = []byte(p.Race)
+	// 2.025 RAC — race (mandatory for FAUF; "U" = unknown)
+	race := p.Race
+	if race == "" {
+		race = "U"
 	}
+	fields[25] = []byte(race)
 
-	// 2.027 HGT — height
-	if p.Height != "" {
-		fields[27] = []byte(p.Height)
+	// 2.027 HGT — height (mandatory for FAUF; "000" = unknown)
+	hgt := p.Height
+	if hgt == "" {
+		hgt = "000"
 	}
+	fields[27] = []byte(hgt)
 
-	// 2.029 WGT — weight
-	if p.Weight != "" {
-		fields[29] = []byte(p.Weight)
+	// 2.029 WGT — weight (mandatory for FAUF; "000" = unknown)
+	wgt := p.Weight
+	if wgt == "" {
+		wgt = "000"
 	}
+	fields[29] = []byte(wgt)
 
-	// 2.031 EYE — eye color
-	if p.EyeColor != "" {
-		fields[31] = []byte(p.EyeColor)
+	// 2.031 EYE — eye color (mandatory for FAUF; "XXX" = unknown)
+	eye := p.EyeColor
+	if eye == "" {
+		eye = "XXX"
 	}
+	fields[31] = []byte(eye)
 
-	// 2.032 HAI — hair color
-	if p.HairColor != "" {
-		fields[32] = []byte(p.HairColor)
+	// 2.032 HAI — hair color (mandatory for FAUF; "XXX" = unknown)
+	hai := p.HairColor
+	if hai == "" {
+		hai = "XXX"
 	}
+	fields[32] = []byte(hai)
 
 	// 2.037 RFP — reason fingerprinted
 	fields[37] = []byte(ATFReasonPrinted)
@@ -298,10 +280,8 @@ func buildATFType2Fields(p ATFPersonInfo, dateStr string) map[int][]byte {
 	// 2.038 DPR — date printed
 	fields[38] = []byte(dateStr)
 
-	// 2.041 ADR — address
-	if p.Address != "" {
-		fields[41] = []byte(p.Address)
-	}
+	// Note: 2.041 RES (address) is omitted — ATF validator rejects spaces
+	// in this field. Address is optional for FAUF.
 
 	// 2.073 CRI — controlling agency
 	fields[73] = []byte(ATFOriginatingAgency)

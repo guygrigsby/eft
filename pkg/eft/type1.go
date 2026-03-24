@@ -25,6 +25,8 @@ type Type1Options struct {
 	DomainName string
 	// DomainVersion (1.013 DOM), e.g. "11.1".
 	DomainVersion string
+	// Version overrides the standard version (1.002 VER). Default "0502".
+	Version string
 	// Date overrides the transaction date (1.005 DAT). Defaults to now.
 	Date time.Time
 }
@@ -49,7 +51,11 @@ func NewType1Record(opts Type1Options) (*Record, error) {
 
 	// 1.001 LEN — computed during encode
 	// 1.002 VER — version of the ANSI/NIST-ITL standard
-	r.SetField(2, []byte("0502")) // ANSI/NIST-ITL 1-2011 Update 2015
+	ver := opts.Version
+	if ver == "" {
+		ver = "0502" // ANSI/NIST-ITL 1-2011 Update 2015
+	}
+	r.SetField(2, []byte(ver))
 
 	// 1.003 CNT — populated by Transaction.Encode
 	r.SetField(3, []byte("0"))

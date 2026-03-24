@@ -29,6 +29,7 @@ const (
 	CompressionJPEGL CompressionAlgorithm = "JPEGL"
 	CompressionJP2   CompressionAlgorithm = "JP2"
 	CompressionJP2L  CompressionAlgorithm = "JP2L"
+	CompressionWSQ20 CompressionAlgorithm = "WSQ20" // WSQ for EBTS 11.x Type-14
 )
 
 // Field represents a single tagged field in a logical record.
@@ -82,6 +83,22 @@ func (r *Record) GetField(fieldNum int) []byte {
 		}
 	}
 	return nil
+}
+
+// idc extracts the Information Designation Character from the record.
+// For binary record types (Type-4), the IDC is byte 4 of the raw binary.
+// For tagged record types, the IDC is in field TT.002.
+func (r *Record) idc() int {
+	if r.rawBinary != nil && len(r.rawBinary) > 4 {
+		return int(r.rawBinary[4])
+	}
+	if v := r.GetField(2); v != nil {
+		n, err := strconv.Atoi(string(v))
+		if err == nil {
+			return n
+		}
+	}
+	return 0
 }
 
 // encode serializes the record into its wire format. Binary record types
@@ -186,22 +203,21 @@ func (t *Transaction) Encode() ([]byte, error) {
 		return nil, fmt.Errorf("eft: transaction missing mandatory Type-1 record")
 	}
 
-	// Build CNT value: first subfield is count of records,
-	// subsequent subfields are "type{US}IDC" pairs.
-	// IDC (Information Designation Character) is 0 for Type-1, then sequential.
+	// Build CNT value per ANSI/NIST-ITL: first subfield is "1{US}N"
+	// where N is the count of remaining records (excluding Type-1),
+	// then each subsequent record as "{type}{US}{IDC}".
 	var cntBuf bytes.Buffer
-	cntBuf.WriteString(strconv.Itoa(len(t.Records)))
-	idc := 0
+	cntBuf.WriteString("1")
+	cntBuf.WriteByte(US)
+	cntBuf.WriteString(strconv.Itoa(len(t.Records) - 1)) // N excludes Type-1
 	for _, r := range t.Records {
+		if r.Type == 1 {
+			continue // already represented in the first subfield
+		}
 		cntBuf.WriteByte(RS)
 		cntBuf.WriteString(strconv.Itoa(r.Type))
 		cntBuf.WriteByte(US)
-		if r.Type == 1 {
-			cntBuf.WriteString("0")
-		} else {
-			fmt.Fprintf(&cntBuf, "%02d", idc)
-			idc++
-		}
+		fmt.Fprintf(&cntBuf, "%02d", r.idc())
 	}
 	type1.SetField(3, cntBuf.Bytes())
 

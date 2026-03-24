@@ -181,6 +181,9 @@ async function handleGenerate() {
 
   const btn = document.getElementById('btn-generate');
   btn.disabled = true;
+  btn.classList.add('btn-loading');
+  const origText = btn.textContent;
+  btn.innerHTML = '<span class="btn-spinner"></span> Generating...';
   showStatus('generate-status', 'Generating EFT file (this may take a moment with WSQ compression)...', '');
 
   try {
@@ -209,6 +212,8 @@ async function handleGenerate() {
     showStatus('generate-status', `Error: ${err.message}`, 'error');
   } finally {
     btn.disabled = false;
+    btn.classList.remove('btn-loading');
+    btn.textContent = origText;
   }
 }
 

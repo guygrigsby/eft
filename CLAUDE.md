@@ -45,7 +45,7 @@ go test -run TestFoo  # Run a single test
 | TOT | `FAUF` | Federal Applicant User Fee |
 | DAI | `WVIAFIS0Z` | Destination agency |
 | ORI | `WVATF0800` | Originating agency |
-| VER | `0200` | ANSI/NIST-ITL 1-2000 |
+| VER | `0300` | ANSI/NIST-ITL 1-2007 (FBI EBTS 8.1) |
 | RFP | `Firearms` | Reason fingerprinted |
 | Max size | 12 MB | ATF upload limit |
 | WSQ | 0.75 bitrate | FBI standard for 500 ppi |

@@ -27,7 +27,10 @@
       "Bash(find /Users/guygrigsby/projects/guygrigsby/eft -name Makefile -o -name *.mk -o -name *.sh -o -name .github -type d)",
       "Bash(grep:*)",
       "Bash(find /Users/guygrigsby/projects/guygrigsby/eft -type d -not -path */.*)",
-      "Bash(grep -h \"^func.*\\(\" /Users/guygrigsby/projects/guygrigsby/eft/pkg/eft/*.go)"
+      "Bash(grep -h \"^func.*\\(\" /Users/guygrigsby/projects/guygrigsby/eft/pkg/eft/*.go)",
+      "Bash(xxd)",
+      "Bash(xxd pkg/eft/testdata/atf_card_scan.eft)",
+      "Bash(xxd -l 500 /Users/guygrigsby/projects/guygrigsby/eft/pkg/eft/testdata/atf_card_scan.eft)"
     ]
   }
 }

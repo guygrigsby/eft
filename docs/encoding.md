@@ -27,9 +27,9 @@ See `nist.go:Record.encode()` for the implementation.
 
 ## CNT Field (1.003)
 
-The transaction header (Type-1) field 1.003 lists all records in the transaction as type/IDC pairs separated by RS. It's auto-computed by `Transaction.Encode()`.
+The transaction header (Type-1) field 1.003 lists all records in the transaction. Per ANSI/NIST-ITL, the first subfield is `1{US}count` (Type-1 record type followed by total record count), then each subsequent record is listed as `type{US}IDC`. Subfields are separated by RS. Auto-computed by `Transaction.Encode()`.
 
-Format: `1.003:1{RS}0{RS}14{RS}1{RS}14{RS}2{GS}` (Type-1 IDC 0, Type-14 IDC 1, Type-14 IDC 2...)
+Format: `1.003:1{US}4{RS}2{US}00{RS}14{US}01{RS}14{US}02{GS}` (4 records total: Type-2 IDC 00, Type-14 IDC 01, Type-14 IDC 02)
 
 ## Binary vs Tagged Records
 

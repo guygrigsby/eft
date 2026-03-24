@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
+	"image/color"
 	_ "image/jpeg"
 	"image/png"
 	_ "image/png"
@@ -24,7 +25,7 @@ func main() {
 	js.Global().Set("eftCropFD258", promiseFunc(cropFD258))
 	js.Global().Set("eftGenerateEFT", promiseFunc(generateEFT))
 	js.Global().Set("eftNormalizeDemographics", promiseFunc(normalizeDemographics))
-	js.Global().Set("eftCropHeaderFields", promiseFunc(cropHeaderFields))
+	js.Global().Set("eftCropHeader", promiseFunc(cropHeader))
 
 	// Signal that WASM is ready.
 	if cb := js.Global().Get("onEftReady"); !cb.IsUndefined() && !cb.IsNull() {
@@ -265,13 +266,13 @@ func normalizeDemographics(args []js.Value) (interface{}, error) {
 	return string(jsonBytes), nil
 }
 
-// cropHeaderFields takes a card image and returns cropped header field
-// images as base64 PNGs for browser-side OCR.
+// cropHeader takes a card image and returns the demographic header area
+// (top ~36%) as a single base64 PNG for full-page OCR.
 //
-// JS: eftCropHeaderFields(imageBytes) → Promise<{name: dataURI, dob: dataURI, ...}>
-func cropHeaderFields(args []js.Value) (interface{}, error) {
+// JS: eftCropHeader(imageBytes) → Promise<dataURI>
+func cropHeader(args []js.Value) (interface{}, error) {
 	if len(args) < 1 {
-		return nil, fmt.Errorf("cropHeaderFields: expected 1 argument (image bytes)")
+		return nil, fmt.Errorf("cropHeader: expected 1 argument (image bytes)")
 	}
 
 	imgBytes := jsBytes(args[0])
@@ -280,35 +281,26 @@ func cropHeaderFields(args []js.Value) (interface{}, error) {
 		return nil, fmt.Errorf("decoding image: %w", err)
 	}
 
-	fields := eft.DefaultFD258HeaderFields()
-	fieldMap := map[string]eft.FractionalRect{
-		"name":           fields.Name,
-		"dob":            fields.DOB,
-		"sex":            fields.Sex,
-		"race":           fields.Race,
-		"height":         fields.Height,
-		"weight":         fields.Weight,
-		"eye_color":      fields.EyeColor,
-		"hair_color":     fields.HairColor,
-		"place_of_birth": fields.PlaceOfBirth,
-		"citizenship":    fields.Citizenship,
-		"ssn":            fields.SSN,
-		"address":        fields.Address,
-	}
+	header := eft.CropHeader(img)
 
-	result := make(map[string]string)
-	for name, rect := range fieldMap {
-		cropped := eft.CropHeaderField(img, rect)
-		b64, err := grayToPNGBase64(cropped)
-		if err != nil {
-			return nil, fmt.Errorf("encoding %s: %w", name, err)
+	// Convert to Gray for PNG encoding.
+	var gray *image.Gray
+	if g, ok := header.(*image.Gray); ok {
+		gray = g
+	} else {
+		bounds := header.Bounds()
+		gray = image.NewGray(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
+		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+			for x := bounds.Min.X; x < bounds.Max.X; x++ {
+				gray.SetGray(x-bounds.Min.X, y-bounds.Min.Y,
+					color.GrayModel.Convert(header.At(x, y)).(color.Gray))
+			}
 		}
-		result[name] = b64
 	}
 
-	jsonBytes, err := json.Marshal(result)
+	b64, err := grayToPNGBase64(gray)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encoding header: %w", err)
 	}
-	return string(jsonBytes), nil
+	return b64, nil
 }

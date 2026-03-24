@@ -31,38 +31,38 @@ type FractionalRect struct {
 }
 ```
 
-### Header area (Y: 0.00–0.28)
+### Header area (Y: 0.00–0.36)
 
-The demographic header occupies the top ~28% of the card (~2.25" of 8"). This area is not cropped — it is simply skipped by the fingerprint crop regions.
+The demographic header plus transition rows (Leave Blank, Employer and Address, Reason Fingerprinted, Signature) occupy the top ~36% of the card (~2.9" of 8"). This area is not cropped — it is simply skipped by the fingerprint crop regions.
 
-### Row 1: Right hand rolled (Y: 0.30–0.53)
-
-| Finger | Position | X1   | Y1   | X2   | Y2   |
-|--------|----------|------|------|------|------|
-| R.Thumb  | 1 | 0.02 | 0.30 | 0.20 | 0.53 |
-| R.Index  | 2 | 0.20 | 0.30 | 0.40 | 0.53 |
-| R.Middle | 3 | 0.40 | 0.30 | 0.60 | 0.53 |
-| R.Ring   | 4 | 0.60 | 0.30 | 0.80 | 0.53 |
-| R.Little | 5 | 0.80 | 0.30 | 0.98 | 0.53 |
-
-### Row 2: Left hand rolled (Y: 0.55–0.76)
+### Row 1: Right hand rolled (Y: 0.36–0.54)
 
 | Finger | Position | X1   | Y1   | X2   | Y2   |
 |--------|----------|------|------|------|------|
-| L.Thumb  | 6 | 0.02 | 0.55 | 0.20 | 0.76 |
-| L.Index  | 7 | 0.20 | 0.55 | 0.40 | 0.76 |
-| L.Middle | 8 | 0.40 | 0.55 | 0.60 | 0.76 |
-| L.Ring   | 9 | 0.60 | 0.55 | 0.80 | 0.76 |
-| L.Little | 10 | 0.80 | 0.55 | 0.98 | 0.76 |
+| R.Thumb  | 1 | 0.02 | 0.36 | 0.20 | 0.54 |
+| R.Index  | 2 | 0.20 | 0.36 | 0.40 | 0.54 |
+| R.Middle | 3 | 0.40 | 0.36 | 0.60 | 0.54 |
+| R.Ring   | 4 | 0.60 | 0.36 | 0.80 | 0.54 |
+| R.Little | 5 | 0.80 | 0.36 | 0.98 | 0.54 |
 
-### Row 3: Flat/slap prints (Y: 0.78–0.98)
+### Row 2: Left hand rolled (Y: 0.565–0.765)
+
+| Finger | Position | X1   | Y1   | X2   | Y2   |
+|--------|----------|------|------|------|------|
+| L.Thumb  | 6 | 0.02 | 0.565 | 0.20 | 0.765 |
+| L.Index  | 7 | 0.20 | 0.565 | 0.40 | 0.765 |
+| L.Middle | 8 | 0.40 | 0.565 | 0.60 | 0.765 |
+| L.Ring   | 9 | 0.60 | 0.565 | 0.80 | 0.765 |
+| L.Little | 10 | 0.80 | 0.565 | 0.98 | 0.765 |
+
+### Row 3: Flat/slap prints (Y: 0.79–0.97)
 
 | Print | Position | X1   | Y1   | X2   | Y2   |
 |-------|----------|------|------|------|------|
-| Left 4 fingers  | 14 | 0.02 | 0.78 | 0.37 | 0.98 |
-| Left thumb       | 15 (part) | 0.37 | 0.78 | 0.50 | 0.98 |
-| Right thumb      | 15 (part) | 0.50 | 0.78 | 0.63 | 0.98 |
-| Right 4 fingers | 13 | 0.63 | 0.78 | 0.98 | 0.98 |
+| Left 4 fingers  | 14 | 0.02 | 0.79 | 0.37 | 0.97 |
+| Left thumb       | 15 (part) | 0.37 | 0.79 | 0.50 | 0.97 |
+| Right thumb      | 15 (part) | 0.50 | 0.79 | 0.63 | 0.97 |
+| Right 4 fingers | 13 | 0.63 | 0.79 | 0.98 | 0.97 |
 
 Note: Both thumbs are combined into position 15 (`FingerBothThumbs`) for the Type-14 slap record.
 

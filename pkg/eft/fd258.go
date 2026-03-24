@@ -52,17 +52,19 @@ func (fr FractionalRect) toRect(w, h int) image.Rectangle {
 // These coordinates are relative to the full card image including the
 // demographic header. The header area (~28%) is simply not cropped.
 func DefaultFD258Layout() FD258Layout {
-	// The FD-258 card is 8" x 8". The demographic header occupies roughly
-	// the top 2.25" (~28%). All Y coordinates below are relative to the
-	// full card height, with the fingerprint area spanning ~0.30 to ~0.98.
+	// The FD-258 card is 8" x 8". The demographic header plus the
+	// transition rows (Leave Blank, Employer, Reason Fingerprinted,
+	// Signature) occupy roughly the top 36% of the card. All Y
+	// coordinates below are relative to the full card height, with
+	// the fingerprint area spanning ~0.36 to ~0.97.
 	//
 	// Rolled prints: 2 rows of 5, each box ~20% of card width.
 	// Flat prints: bottom row of the card.
 	const (
 		// Rolled rows (Y coordinates relative to full card)
-		row1Top    = 0.30
-		row1Bottom = 0.53
-		row2Top    = 0.55
+		row1Top    = 0.36
+		row1Bottom = 0.56
+		row2Top    = 0.565
 		row2Bottom = 0.76
 
 		// Column positions for 5 boxes per row (unchanged — full width)
@@ -78,8 +80,8 @@ func DefaultFD258Layout() FD258Layout {
 		col5Right = 0.98
 
 		// Flat print row (Y coordinates relative to full card)
-		flatTop    = 0.78
-		flatBottom = 0.98
+		flatTop    = 0.79
+		flatBottom = 0.97
 
 		// Flat columns: [left 4 fingers][left thumb][right thumb][right 4 fingers]
 		flatLeftStart       = 0.02

@@ -710,23 +710,26 @@ func TestStructure_TransactionCNT(t *testing.T) {
 	}
 	cntVal := s[cntStart:cntEnd]
 
-	// CNT should be "4{RS}1{US}0{RS}2{US}00{RS}14{US}01{RS}14{US}02"
-	// (4 records total, then type/IDC pairs)
+	// Per ANSI/NIST-ITL, CNT first subfield is "1{US}N" where N is the
+	// count of remaining records (excluding Type-1), then "{type}{US}{IDC}"
+	// for each subsequent record.
+	// Expected: "1{US}3{RS}2{US}00{RS}14{US}01{RS}14{US}02"
 	subfields := strings.Split(cntVal, string([]byte{RS}))
-	if len(subfields) != 5 { // count + 4 type/IDC pairs
-		t.Errorf("CNT has %d subfields, want 5; value=%q", len(subfields), cntVal)
+	if len(subfields) != 4 { // Type-1 entry + 3 non-Type-1 records
+		t.Errorf("CNT has %d subfields, want 4; value=%q", len(subfields), cntVal)
 	}
 
-	if subfields[0] != "4" {
-		t.Errorf("CNT record count = %q, want 4", subfields[0])
+	// First subfield: "1{US}3" (3 records excluding Type-1)
+	firstPair := strings.Split(subfields[0], string([]byte{US}))
+	if len(firstPair) != 2 || firstPair[0] != "1" || firstPair[1] != "3" {
+		t.Errorf("CNT first subfield = %q, want 1{US}3", subfields[0])
 	}
 
-	// Verify each type/IDC pair.
+	// Verify each subsequent type/IDC pair.
 	expectedPairs := []struct {
 		recType string
 		idc     string
 	}{
-		{"1", "0"},
 		{"2", "00"},
 		{"14", "01"},
 		{"14", "02"},
@@ -1198,9 +1201,9 @@ func TestFD258_CropDimensions(t *testing.T) {
 		if w < 600 || w > 900 {
 			t.Errorf("rolled[%d] width %d outside expected range [600, 900]", i, w)
 		}
-		// Height should be ~23% of 4000 = ~920 pixels.
-		if h < 750 || h > 1100 {
-			t.Errorf("rolled[%d] height %d outside expected range [750, 1100]", i, h)
+		// Height should be ~18% of 4000 = ~720 pixels.
+		if h < 600 || h > 900 {
+			t.Errorf("rolled[%d] height %d outside expected range [600, 900]", i, h)
 		}
 	}
 
@@ -1415,7 +1418,6 @@ func TestATFType2Fields_AllFields(t *testing.T) {
 		32: "RED",
 		37: "Firearms",
 		38: "20240615",
-		41: "456 Oak Ave, Dallas, TX 75201",
 		73: ATFOriginatingAgency,
 	}
 
@@ -1446,8 +1448,25 @@ func TestATFType2Fields_MinimalFields(t *testing.T) {
 		t.Errorf("RFP: got %q", fields[37])
 	}
 
-	// Optional fields should be absent.
-	optionalFields := []int{16, 20, 21, 24, 25, 27, 29, 31, 32, 41}
+	// Mandatory FAUF fields must have defaults even when not provided.
+	mandatoryDefaults := map[int]string{
+		20: "XX",  // POB
+		24: "U",   // SEX
+		25: "U",   // RAC
+		27: "000", // HGT
+		29: "000", // WGT
+		31: "XXX", // EYE
+		32: "XXX", // HAI
+	}
+	for fn, want := range mandatoryDefaults {
+		got := string(fields[fn])
+		if got != want {
+			t.Errorf("mandatory field 2.%03d: got %q, want %q", fn, got, want)
+		}
+	}
+
+	// Truly optional fields should be absent.
+	optionalFields := []int{16, 21, 41}
 	for _, fn := range optionalFields {
 		if _, ok := fields[fn]; ok {
 			t.Errorf("optional field 2.%03d should not be set for minimal person", fn)

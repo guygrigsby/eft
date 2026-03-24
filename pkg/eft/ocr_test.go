@@ -392,11 +392,11 @@ func TestCropHeader(t *testing.T) {
 	header := CropHeader(img)
 	bounds := header.Bounds()
 
-	// Header should be full width, ~28% height.
+	// Header should be full width, ~36% height.
 	if bounds.Dx() != 4000 {
 		t.Errorf("header width = %d, want 4000", bounds.Dx())
 	}
-	expectedH := int(0.28 * 4000) // ~1120
+	expectedH := int(0.36 * 4000) // ~1440
 	if bounds.Dy() < expectedH-10 || bounds.Dy() > expectedH+10 {
 		t.Errorf("header height = %d, want ~%d", bounds.Dy(), expectedH)
 	}

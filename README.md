@@ -4,6 +4,8 @@ Go library and CLI for creating ANSI/NIST-ITL biometric transaction files (EFT).
 
 Built-in WSQ compression, FD-258 card cropping, OCR demographic extraction, and ATF-specific defaults.
 
+> **Disclaimer:** This software generates EFT files based on the ANSI/NIST-ITL specification and community-documented ATF constants. Generated files have **not** been independently verified with ATF eForms. The ATF does not publish an official EFT upload specification — the constants used here (TOT, DAI, ORI, etc.) come from community reverse-engineering. Always review your submission carefully before uploading. Use at your own risk.
+
 ## Web App
 
 **No installation required.** Use the web app at [guygrigsby.github.io/eft](https://guygrigsby.github.io/eft) — everything runs in your browser via WebAssembly. No data is sent to any server.

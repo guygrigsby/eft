@@ -201,13 +201,14 @@ func ExtractDemographics(ctx context.Context, img image.Image, ocr OCRProvider, 
 }
 
 // CropHeader extracts the demographic header region from an FD-258 card
-// image. Returns the top ~28% of the card. Useful for manual inspection
-// or document-level OCR.
+// image. Returns the top ~36% of the card (everything above the fingerprint
+// boxes). Useful for document-level OCR where the entire header is read
+// at once and then parsed.
 func CropHeader(img image.Image) image.Image {
 	bounds := img.Bounds()
 	w := bounds.Dx()
 	h := bounds.Dy()
-	headerRect := FractionalRect{0.0, 0.0, 1.0, 0.28}.toRect(w, h)
+	headerRect := FractionalRect{0.0, 0.0, 1.0, 0.36}.toRect(w, h)
 	return cropSubImage(img, headerRect)
 }
 
