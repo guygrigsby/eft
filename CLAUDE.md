@@ -73,6 +73,10 @@ go test -run TestFoo  # Run a single test
 
 Full source list and design rationale: → [docs/sources.md](docs/sources.md)
 
+## Architecture Decision Records
+
+Create an ADR in `docs/adr/` for any major change. Use the template at `docs/adr/0000-template.md`. Number sequentially (e.g., `0001-use-type4-only-for-atf.md`). Major changes include: new record types, API changes, dependency additions/removals, protocol/encoding changes, and significant architectural shifts.
+
 ## Detailed Documentation
 
 | Topic | File |
